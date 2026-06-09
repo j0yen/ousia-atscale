@@ -1,0 +1,85 @@
+{
+  "catalog": "acme",
+  "schema": "sales",
+  "table": "fact_orders",
+  "description": "Order fact table for the ACME sales semantic layer",
+  "columns": [
+    {
+      "name": "order_key",
+      "type": "key",
+      "description": "Surrogate key for orders"
+    },
+    {
+      "name": "revenue",
+      "type": "measure",
+      "description": "Total revenue in USD",
+      "aggregation": "sum"
+    },
+    {
+      "name": "order_count",
+      "type": "measure",
+      "description": "Count of orders",
+      "aggregation": "count"
+    },
+    {
+      "name": "avg_order_value",
+      "type": "measure",
+      "description": "Average order value",
+      "aggregation": "avg"
+    },
+    {
+      "name": "customer_name",
+      "type": "dimension",
+      "description": "Customer full name",
+      "folder": "Customer"
+    },
+    {
+      "name": "customer_status",
+      "type": "dimension",
+      "description": "Customer status (active/inactive/vip)",
+      "folder": "Customer"
+    },
+    {
+      "name": "product_category",
+      "type": "dimension",
+      "description": "Product category",
+      "folder": "Product"
+    },
+    {
+      "name": "order_date",
+      "type": "date",
+      "description": "Date the order was placed"
+    },
+    {
+      "name": "ship_time",
+      "type": "time",
+      "description": "Time the order was shipped"
+    },
+    {
+      "name": "region",
+      "type": "attribute",
+      "description": "Sales region",
+      "folder": "Geography"
+    }
+  ],
+  "column_groups": [
+    {
+      "name": "CustomerHierarchy",
+      "type": "hierarchy",
+      "description": "Customer dimension hierarchy",
+      "columns": ["customer_name", "customer_status"]
+    },
+    {
+      "name": "ProductLevelGroup",
+      "type": "level",
+      "description": "Product level in the category hierarchy",
+      "columns": ["product_category"]
+    },
+    {
+      "name": "TopCustomers",
+      "type": "named_set",
+      "description": "Named set of top customers by revenue",
+      "columns": ["customer_name"]
+    }
+  ]
+}
