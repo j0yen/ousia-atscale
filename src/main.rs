@@ -11,7 +11,7 @@
 
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
-use ousia_atscale::{annotate, mapper::Mapper, rdf, report::CoverageReport, AtscaleError, AtscaleModel};
+use ousia_atscale::{annotate, diff as ousia_diff, mapper::Mapper, rdf, report::CoverageReport, AtscaleError, AtscaleModel};
 use std::path::PathBuf;
 
 fn main() {
@@ -28,6 +28,9 @@ fn run() -> Result<()> {
         Commands::Ground { model, from_mcp } => cmd_ground(model, from_mcp),
         Commands::Annotate { model, out, from_mcp } => cmd_annotate(model, out, from_mcp),
         Commands::Report { model, from_mcp } => cmd_report(model, from_mcp),
+        Commands::Diff { a, b, format, verbose } => {
+            std::process::exit(cmd_diff(a, b, format, verbose)? as i32);
+        }
         Commands::Export { model, from_mcp, format, out } => {
             cmd_export(model, from_mcp, format, out)
         }
@@ -43,6 +46,13 @@ fn run() -> Result<()> {
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+}
+
+/// Output format for the `diff` subcommand.
+#[derive(Clone, ValueEnum)]
+enum OutputFormat {
+    Text,
+    Json,
 }
 
 /// RDF output format for the `export` subcommand.
@@ -85,6 +95,24 @@ enum Commands {
         /// Pull model live from the attached AtScale MCP connector.
         #[arg(long)]
         from_mcp: Option<String>,
+    },
+    /// Compare the BFO grounding of two AtScale models element-by-element.
+    ///
+    /// A divergence is a shared element name whose BFO category differs between models.
+    /// Exit code: 0 if no divergences, 1 if ≥1 divergence found.
+    Diff {
+        /// Path to model A (AtScale model JSON).
+        #[arg(long)]
+        a: PathBuf,
+        /// Path to model B (AtScale model JSON).
+        #[arg(long)]
+        b: PathBuf,
+        /// Output format.
+        #[arg(long, value_enum, default_value = "text")]
+        format: OutputFormat,
+        /// Also list all agreeing elements (text format only).
+        #[arg(long)]
+        verbose: bool,
     },
     /// Emit the grounded model as RDF (Turtle or OWL/XML).
     ///
@@ -181,6 +209,21 @@ fn cmd_report(model_path: Option<PathBuf>, from_mcp: Option<String>) -> Result<(
     let model_label = format!("{}.{}.{}", model.catalog, model.schema, model.table);
     report.print(&model_label);
     Ok(())
+}
+
+fn cmd_diff(a: PathBuf, b: PathBuf, format: OutputFormat, verbose: bool) -> Result<i32> {
+    let model_a = AtscaleModel::from_file(&a.to_string_lossy())?;
+    let model_b = AtscaleModel::from_file(&b.to_string_lossy())?;
+    let result = ousia_diff::diff_models(&model_a, &model_b);
+
+    match format {
+        OutputFormat::Text => ousia_diff::print_text(&result, verbose),
+        OutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+    }
+
+    Ok(if result.has_divergences() { 1 } else { 0 })
 }
 
 fn cmd_export(

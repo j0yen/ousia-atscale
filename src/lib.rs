@@ -13,6 +13,7 @@
 //! - [`error`]    — Error types
 
 pub mod annotate;
+pub mod diff;
 pub mod error;
 pub mod mapper;
 pub mod model;
