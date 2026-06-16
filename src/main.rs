@@ -11,7 +11,7 @@
 
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
-use ousia_atscale::{annotate, diff as ousia_diff, mapper::Mapper, rdf, report::CoverageReport, AtscaleError, AtscaleModel};
+use ousia_atscale::{annotate, diff as ousia_diff, mapper::Mapper, rdf, report::CoverageReport, validate, AtscaleError, AtscaleModel};
 use std::path::PathBuf;
 
 fn main() {
@@ -27,13 +27,16 @@ fn run() -> Result<()> {
     match cli.command {
         Commands::Ground { model, from_mcp } => cmd_ground(model, from_mcp),
         Commands::Annotate { model, out, from_mcp } => cmd_annotate(model, out, from_mcp),
-        Commands::Report { model, from_mcp } => cmd_report(model, from_mcp),
+        Commands::Report { model, from_mcp, validate: do_validate, reasoner } => {
+            cmd_report(model, from_mcp, do_validate, reasoner)
+        }
         Commands::Diff { a, b, format, verbose } => {
             std::process::exit(cmd_diff(a, b, format, verbose)? as i32);
         }
         Commands::Export { model, from_mcp, format, out } => {
             cmd_export(model, from_mcp, format, out)
         }
+        Commands::Validate { model, reasoner } => cmd_validate(model, reasoner),
     }
 }
 
@@ -95,6 +98,24 @@ enum Commands {
         /// Pull model live from the attached AtScale MCP connector.
         #[arg(long)]
         from_mcp: Option<String>,
+        /// Append OWL 2 DL consistency check via ousia-reason.
+        #[arg(long)]
+        validate: bool,
+        /// Path to ousia-reason binary (default: resolve from PATH).
+        #[arg(long)]
+        reasoner: Option<PathBuf>,
+    },
+    /// Validate OWL 2 DL profile conformance and consistency via ousia-reason.
+    ///
+    /// Grounds the model, exports it to OWL/XML, runs `ousia-reason check`, and
+    /// reports the verdict: "consistent", "inconsistent", or "not-dl".
+    Validate {
+        /// Path to an AtScale model JSON file.
+        #[arg(long)]
+        model: Option<PathBuf>,
+        /// Path to ousia-reason binary (default: resolve from PATH).
+        #[arg(long)]
+        reasoner: Option<PathBuf>,
     },
     /// Compare the BFO grounding of two AtScale models element-by-element.
     ///
@@ -201,14 +222,37 @@ fn cmd_annotate(model_path: Option<PathBuf>, out: PathBuf, from_mcp: Option<Stri
     Ok(())
 }
 
-fn cmd_report(model_path: Option<PathBuf>, from_mcp: Option<String>) -> Result<()> {
+fn cmd_report(
+    model_path: Option<PathBuf>,
+    from_mcp: Option<String>,
+    do_validate: bool,
+    reasoner: Option<PathBuf>,
+) -> Result<()> {
     let model = load_model(model_path, from_mcp)?;
     let mapper = Mapper::new();
     let grounded = mapper.ground_model(&model)?;
     let report = CoverageReport::build(&grounded);
     let model_label = format!("{}.{}.{}", model.catalog, model.schema, model.table);
     report.print(&model_label);
+
+    if do_validate {
+        let verdict = validate::validate_model(&model, reasoner.as_deref())?;
+        println!("Consistency: {}", verdict.summary());
+    }
     Ok(())
+}
+
+fn cmd_validate(model_path: Option<PathBuf>, reasoner: Option<PathBuf>) -> Result<()> {
+    let model = load_model(model_path, None)?;
+    let verdict = validate::validate_model(&model, reasoner.as_deref())?;
+    println!("Consistency: {}", verdict.summary());
+    match &verdict {
+        validate::ConsistencyVerdict::Consistent => Ok(()),
+        validate::ConsistencyVerdict::Inconsistent { .. }
+        | validate::ConsistencyVerdict::NotDl { .. } => {
+            std::process::exit(2);
+        }
+    }
 }
 
 fn cmd_diff(a: PathBuf, b: PathBuf, format: OutputFormat, verbose: bool) -> Result<i32> {

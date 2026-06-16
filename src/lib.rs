@@ -19,6 +19,7 @@ pub mod mapper;
 pub mod model;
 pub mod rdf;
 pub mod report;
+pub mod validate;
 
 pub use error::AtscaleError;
 pub use mapper::{BfoCategory, GroundedElement, Mapper};

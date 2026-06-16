@@ -23,4 +23,13 @@ pub enum AtscaleError {
          independent_continuant"
     )]
     InvalidBfoHint { column: String, hint: String },
+
+    #[error(
+        "ousia-reason not found (tried: {tried}); \
+         install it or supply the path with --reasoner <path>"
+    )]
+    ReasonerNotFound { tried: String },
+
+    #[error("ousia-reason execution failed: {0}")]
+    ReasonerFailed(String),
 }
