@@ -13,6 +13,21 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
+// ---------------------------------------------------------------------------
+// Paper vocabulary IRIs (§4.4). These are the canonical constants used by
+// BOTH the JSON overlay emitter (this module) and the RDF exporter (rdf.rs).
+// Keeping them here prevents drift between the two emitters (AC #7).
+// ---------------------------------------------------------------------------
+
+/// IRI for the `philosophicalGrounding` annotation property.
+pub const PHILOSOPHICAL_GROUNDING_IRI: &str =
+    "https://ousia.example/vocab#philosophicalGrounding";
+/// IRI for the `domainModule` annotation property.
+pub const DOMAIN_MODULE_IRI: &str = "https://ousia.example/vocab#domainModule";
+/// IRI for the `aristotelianDefinition` annotation property.
+pub const ARISTOTELIAN_DEFINITION_IRI: &str =
+    "https://ousia.example/vocab#aristotelianDefinition";
+
 /// Annotation for one model element (§4.4 vocabulary).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ElementAnnotation {
