@@ -338,7 +338,7 @@ mod tests {
         let bytes = emit_turtle(&m.catalog, &m.schema, &m.table, &g).unwrap();
         let text = String::from_utf8(bytes).unwrap();
         // Each individual is declared as owl:NamedIndividual at least once.
-        let count = text.matches("NamedIndividual").count();
+        let _count = text.matches("NamedIndividual").count();
         // Two occurrences per individual: rdf:type owl:NamedIndividual + the class assertion
         // serialized by TurtleSerializer may compact, but at minimum each name appears once.
         // We check at least expected occurrences of the element fragment.
