@@ -16,4 +16,11 @@ pub enum AtscaleError {
 
     #[error("Invalid model structure: {0}")]
     InvalidModel(String),
+
+    #[error(
+        "Invalid bfo_hint '{hint}' on column '{column}'; valid values are: \
+         quality, role, information_gdc, temporal_region, process, disposition, \
+         independent_continuant"
+    )]
+    InvalidBfoHint { column: String, hint: String },
 }

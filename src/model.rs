@@ -38,6 +38,13 @@ pub struct Column {
     /// Aggregation function for measures (sum, avg, count, …)
     #[serde(default)]
     pub aggregation: Option<String>,
+    /// Optional explicit BFO category override.  When present it takes
+    /// precedence over all heuristics.  Valid values (case-insensitive):
+    /// "quality", "role", "information_gdc", "temporal_region", "process",
+    /// "disposition", "independent_continuant".  An invalid value causes the
+    /// mapper to return an error (typos fail loudly).
+    #[serde(default)]
+    pub bfo_hint: Option<String>,
 }
 
 /// A logical column group / hierarchy level.
@@ -72,10 +79,11 @@ impl AtscaleModel {
         for col in &self.columns {
             elems.push(ModelElement {
                 name: &col.name,
-                element_type: ElementKind::from_str(&col.column_type),
+                element_type: ElementKind::from_kind_str(&col.column_type),
                 description: col.description.as_deref(),
                 aggregation: col.aggregation.as_deref(),
                 folder: col.folder.as_deref(),
+                bfo_hint: col.bfo_hint.as_deref(),
             });
         }
         for cg in &self.column_groups {
@@ -85,6 +93,7 @@ impl AtscaleModel {
                 description: cg.description.as_deref(),
                 aggregation: None,
                 folder: None,
+                bfo_hint: None,
             });
         }
         elems
@@ -99,6 +108,8 @@ pub struct ModelElement<'a> {
     pub description: Option<&'a str>,
     pub aggregation: Option<&'a str>,
     pub folder: Option<&'a str>,
+    /// Forwarded from `Column::bfo_hint`; `None` for column-group elements.
+    pub bfo_hint: Option<&'a str>,
 }
 
 /// Canonical element kind used for BFO mapping decisions.
@@ -117,7 +128,7 @@ pub enum ElementKind {
 }
 
 impl ElementKind {
-    pub fn from_str(s: &str) -> Self {
+    pub fn from_kind_str(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "measure" => Self::Measure,
             "dimension" => Self::Dimension,

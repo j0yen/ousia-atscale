@@ -11,6 +11,11 @@
 //! | hierarchy/level      | Role                | A hierarchical level (e.g. "Product Category") is a role played by members in a classification scheme. |
 //! | set/named_set        | Quality             | Named sets collect entities sharing a quality. |
 //! | unknown              | IndependentContinuant (inferred) | Fallback — the bearer of unclassified properties. |
+//!
+//! **Override precedence**: `bfo_hint` > heuristic.  If a column carries an
+//! explicit `bfo_hint` value it is applied before any heuristic is consulted.
+//! An unrecognised hint value causes `ground` to return
+//! `AtscaleError::InvalidBfoHint` — typos fail loudly.
 
 use crate::model::{ElementKind, ModelElement};
 use serde::{Deserialize, Serialize};
@@ -60,6 +65,23 @@ impl BfoCategory {
             Self::Disposition => "disposition",
         }
     }
+
+    /// Parse a `bfo_hint` string (case-insensitive) into a `BfoCategory`.
+    ///
+    /// Returns `None` for unrecognised values so the caller can emit a
+    /// descriptive error that includes the column name.
+    pub fn from_hint(s: &str) -> Option<Self> {
+        match s.to_lowercase().replace('-', "_").as_str() {
+            "quality" => Some(Self::Quality),
+            "role" => Some(Self::Role),
+            "information_gdc" | "informationgdc" => Some(Self::InformationGDC),
+            "temporal_region" | "temporalregion" => Some(Self::TemporalRegion),
+            "process" => Some(Self::Process),
+            "disposition" => Some(Self::Disposition),
+            "independent_continuant" | "independentcontinuant" => Some(Self::IndependentContinuant),
+            _ => None,
+        }
+    }
 }
 
 /// A model element with its proposed BFO grounding.
@@ -81,15 +103,43 @@ impl Mapper {
     }
 
     /// Propose a BFO category for a single model element.
-    pub fn ground<'a>(&self, elem: &ModelElement<'a>) -> GroundedElement {
-        let (cat, rationale) = self.assign(&elem.element_type, elem.name, elem.description, elem.aggregation);
-        GroundedElement {
+    ///
+    /// If the element carries a `bfo_hint`, it is resolved first (hint >
+    /// heuristic).  An invalid hint value returns
+    /// `AtscaleError::InvalidBfoHint`.
+    pub fn ground(
+        &self,
+        elem: &ModelElement<'_>,
+    ) -> Result<GroundedElement, crate::AtscaleError> {
+        // Check for an explicit override before consulting any heuristic.
+        let (cat, rationale) = if let Some(hint) = elem.bfo_hint {
+            match BfoCategory::from_hint(hint) {
+                Some(cat) => {
+                    let rationale = format!(
+                        "'{}' grounded as {} via explicit bfo_hint override.",
+                        elem.name,
+                        cat.label()
+                    );
+                    (cat, rationale)
+                }
+                None => {
+                    return Err(crate::AtscaleError::InvalidBfoHint {
+                        column: elem.name.to_string(),
+                        hint: hint.to_string(),
+                    });
+                }
+            }
+        } else {
+            self.assign(&elem.element_type, elem.name, elem.description, elem.aggregation)
+        };
+
+        Ok(GroundedElement {
             name: elem.name.to_string(),
             element_type: elem.element_type.label().to_string(),
             bfo_iri: format!("http://purl.obolibrary.org/obo/{}", cat.bfo_iri()),
             rationale,
             bfo_category: cat,
-        }
+        })
     }
 
     fn assign(
@@ -176,7 +226,12 @@ impl Mapper {
     }
 
     /// Ground all elements of a model.
-    pub fn ground_model(&self, model: &crate::AtscaleModel) -> Vec<GroundedElement> {
+    ///
+    /// Returns `Err` on the first element whose `bfo_hint` is invalid.
+    pub fn ground_model(
+        &self,
+        model: &crate::AtscaleModel,
+    ) -> Result<Vec<GroundedElement>, crate::AtscaleError> {
         model.elements().iter().map(|e| self.ground(e)).collect()
     }
 }
