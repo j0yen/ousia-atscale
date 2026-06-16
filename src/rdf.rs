@@ -75,7 +75,7 @@ pub fn emit_turtle(
         .with_prefix("ousia", "https://ousia.example/vocab#")?
         .with_prefix(
             "model",
-            &format!("{}/", model_iri(catalog, schema, table)),
+            format!("{}/", model_iri(catalog, schema, table)),
         )?
         .for_writer(Vec::new());
 
@@ -297,7 +297,7 @@ mod tests {
     fn grounded() -> (AtscaleModel, Vec<GroundedElement>) {
         let model = sales_model();
         let mapper = Mapper::new();
-        let g = mapper.ground_model(&model);
+        let g = mapper.ground_model(&model).expect("ground_model failed in test fixture");
         (model, g)
     }
 

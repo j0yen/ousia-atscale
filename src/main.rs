@@ -132,7 +132,7 @@ fn load_model(model_path: Option<PathBuf>, from_mcp: Option<String>) -> Result<A
 fn cmd_ground(model_path: Option<PathBuf>, from_mcp: Option<String>) -> Result<()> {
     let model = load_model(model_path, from_mcp)?;
     let mapper = Mapper::new();
-    let grounded = mapper.ground_model(&model);
+    let grounded = mapper.ground_model(&model)?;
 
     let model_label = format!("{}.{}.{}", model.catalog, model.schema, model.table);
     println!("BFO Grounding — {}\n", model_label);
@@ -163,7 +163,7 @@ fn cmd_ground(model_path: Option<PathBuf>, from_mcp: Option<String>) -> Result<(
 fn cmd_annotate(model_path: Option<PathBuf>, out: PathBuf, from_mcp: Option<String>) -> Result<()> {
     let model = load_model(model_path, from_mcp)?;
     let mapper = Mapper::new();
-    let grounded = mapper.ground_model(&model);
+    let grounded = mapper.ground_model(&model)?;
     let overlay = annotate::emit_overlay(&model, &grounded);
     let out_str = out.to_string_lossy().to_string();
     overlay.write_to_file(&out_str)?;
@@ -176,7 +176,7 @@ fn cmd_annotate(model_path: Option<PathBuf>, out: PathBuf, from_mcp: Option<Stri
 fn cmd_report(model_path: Option<PathBuf>, from_mcp: Option<String>) -> Result<()> {
     let model = load_model(model_path, from_mcp)?;
     let mapper = Mapper::new();
-    let grounded = mapper.ground_model(&model);
+    let grounded = mapper.ground_model(&model)?;
     let report = CoverageReport::build(&grounded);
     let model_label = format!("{}.{}.{}", model.catalog, model.schema, model.table);
     report.print(&model_label);
@@ -193,7 +193,7 @@ fn cmd_export(
 
     let model = load_model(model_path, from_mcp)?;
     let mapper = Mapper::new();
-    let grounded = mapper.ground_model(&model);
+    let grounded = mapper.ground_model(&model)?;
 
     match format {
         RdfFormat::Turtle => {
