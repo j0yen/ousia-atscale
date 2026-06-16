@@ -1,0 +1,88 @@
+{
+  "catalog": "acme",
+  "schema": "finance",
+  "table": "fact_pnl",
+  "description": "Profit and loss model for ACME Corp — budget vs actuals by cost centre and fiscal period",
+  "columns": [
+    {
+      "name": "pnl_key",
+      "type": "key",
+      "description": "Surrogate key for P&L rows"
+    },
+    {
+      "name": "actual_revenue",
+      "type": "measure",
+      "description": "Actual revenue recognised in the period",
+      "aggregation": "sum"
+    },
+    {
+      "name": "budget_revenue",
+      "type": "measure",
+      "description": "Budgeted revenue for the period",
+      "aggregation": "sum"
+    },
+    {
+      "name": "actual_cogs",
+      "type": "measure",
+      "description": "Actual cost of goods sold",
+      "aggregation": "sum"
+    },
+    {
+      "name": "budget_cogs",
+      "type": "measure",
+      "description": "Budgeted cost of goods sold",
+      "aggregation": "sum"
+    },
+    {
+      "name": "gross_margin",
+      "type": "measure",
+      "description": "Gross margin (actual revenue minus actual COGS)",
+      "aggregation": "sum"
+    },
+    {
+      "name": "cost_centre_name",
+      "type": "dimension",
+      "description": "Name of the cost centre responsible for the P&L row",
+      "folder": "Cost Centre"
+    },
+    {
+      "name": "cost_centre_type",
+      "type": "dimension",
+      "description": "Type of cost centre (revenue / overhead / capex)",
+      "folder": "Cost Centre"
+    },
+    {
+      "name": "account_category",
+      "type": "dimension",
+      "description": "Account category (income / expense / asset / liability)",
+      "folder": "Account"
+    },
+    {
+      "name": "fiscal_period_start",
+      "type": "date",
+      "description": "Start date of the fiscal period"
+    },
+    {
+      "name": "fiscal_period_end",
+      "type": "date",
+      "description": "End date of the fiscal period"
+    },
+    {
+      "name": "currency_code",
+      "type": "attribute",
+      "description": "ISO 4217 currency code (USD, EUR, GBP…)"
+    }
+  ],
+  "column_groups": [
+    {
+      "name": "FiscalCalendar",
+      "type": "hierarchy",
+      "description": "Fiscal year → quarter → period hierarchy"
+    },
+    {
+      "name": "CostCentreTree",
+      "type": "hierarchy",
+      "description": "Corporate → division → department → cost centre hierarchy"
+    }
+  ]
+}
