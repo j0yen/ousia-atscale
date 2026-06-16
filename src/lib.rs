@@ -16,6 +16,7 @@ pub mod annotate;
 pub mod diff;
 pub mod error;
 pub mod mapper;
+pub mod mcp;
 pub mod model;
 pub mod rdf;
 pub mod report;

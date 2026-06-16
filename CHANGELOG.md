@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.5.0 — 2026-06-16
+
+Add `serve` subcommand: MCP stdio server exposing `ground_model`, `coverage_report`, and `diff_models` tools.
+Uses the shared `mcp-core` crate (same JSON-RPC 2.0 wire format as `ousia-mcp`).
+All tools are read-only and perform no file or network I/O during a call.
+An AI agent can now query BFO grounding for an AtScale model mid-conversation.
+Register via `claude mcp add ousia-atscale -- ousia-atscale serve`.
+All 6 MCP acceptance criteria verified green (AC2-AC6, plus AC1 clippy clean).
+
 ## v0.4.0 — 2026-06-16
 
 Add `diff` subcommand comparing BFO groundings of two AtScale models element-by-element.

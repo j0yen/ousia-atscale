@@ -117,6 +117,49 @@ column JSON.
 
 ---
 
+## MCP server
+
+`ousia-atscale serve` runs a read-only MCP server on stdin/stdout. Register it in
+Claude Code so an AI agent can query BFO grounding mid-conversation:
+
+```sh
+claude mcp add ousia-atscale -- ousia-atscale serve
+```
+
+Or add it manually to `~/.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "ousia-atscale": {
+      "command": "ousia-atscale",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+The server advertises four tools:
+
+| Tool | Arguments | Returns |
+|------|-----------|---------|
+| `ground_model` | `model_json: string` | JSON array of grounded elements |
+| `coverage_report` | `model_json: string` | JSON object with coverage stats |
+| `diff_models` | `model_a_json: string`, `model_b_json: string` | JSON object matching `diff` CLI output |
+| `validate_model` | `model_json: string` | `{ "verdict": "consistent" \| "inconsistent — ..." \| "not-dl — ..." }` — requires `ousia-reason` on PATH |
+
+Pass the JSON string returned by the AtScale MCP `describe_model` tool directly as
+`model_json`. Example agent workflow:
+
+1. `describe_model(catalog, schema, table)` → model JSON
+2. Pass that JSON to `ground_model` → per-element BFO grounding
+3. Pass two model JSONs to `diff_models` → semantic divergence report
+4. Optionally call `validate_model` to check OWL 2 DL consistency
+
+The `ground_model`, `coverage_report`, and `diff_models` tools are **pure and read-only** — no file writes, no network calls. `validate_model` writes a temporary OWL/XML file (auto-deleted) and requires `ousia-reason` on PATH.
+
+---
+
 ## Live MCP mode
 
 If you have the AtScale MCP connector attached to your Claude session:
@@ -155,7 +198,7 @@ Two example models ship with the repo so you can try the tool without any AtScal
 cargo test
 ```
 
-16 integration tests covering all 8 acceptance criteria.
+59 tests (unit + integration) covering acceptance criteria for ground, annotate, report, export, diff, validate, and serve subcommands.
 
 ---
 

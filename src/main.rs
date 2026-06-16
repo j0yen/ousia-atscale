@@ -11,7 +11,7 @@
 
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
-use ousia_atscale::{annotate, diff as ousia_diff, mapper::Mapper, rdf, report::CoverageReport, validate, AtscaleError, AtscaleModel};
+use ousia_atscale::{annotate, diff as ousia_diff, mapper::Mapper, mcp, rdf, report::CoverageReport, validate, AtscaleError, AtscaleModel};
 use std::path::PathBuf;
 
 fn main() {
@@ -37,6 +37,7 @@ fn run() -> Result<()> {
             cmd_export(model, from_mcp, format, out)
         }
         Commands::Validate { model, reasoner } => cmd_validate(model, reasoner),
+        Commands::Serve => cmd_serve(),
     }
 }
 
@@ -135,6 +136,11 @@ enum Commands {
         #[arg(long)]
         verbose: bool,
     },
+    /// Run an MCP stdio server exposing ground_model, coverage_report, diff_models.
+    ///
+    /// Reads newline-delimited JSON-RPC 2.0 from stdin and writes responses to
+    /// stdout. All tools are read-only and perform no file or network I/O.
+    Serve,
     /// Emit the grounded model as RDF (Turtle or OWL/XML).
     ///
     /// Each model element becomes an OWL named individual typed to its BFO class,
@@ -268,6 +274,11 @@ fn cmd_diff(a: PathBuf, b: PathBuf, format: OutputFormat, verbose: bool) -> Resu
     }
 
     Ok(if result.has_divergences() { 1 } else { 0 })
+}
+
+fn cmd_serve() -> Result<()> {
+    mcp_core::serve_stdio(mcp::tools(), "ousia-atscale", env!("CARGO_PKG_VERSION"))
+        .map_err(|e| anyhow::anyhow!("MCP server error: {e}"))
 }
 
 fn cmd_export(
