@@ -1,16 +1,17 @@
 //! ousia-atscale CLI entry point.
 //!
-//! Three subcommands:
+//! Subcommands:
 //!   ground   — propose BFO category for each model element
 //!   annotate — emit grounded overlay JSON
 //!   report   — print coverage statistics
+//!   export   — emit grounded model as RDF (Turtle or OWL/XML)
 //!
 //! All offline paths read from a --model <json-file>. The optional --from-mcp
 //! path gates itself with an actionable error when the MCP connector is absent.
 
 use anyhow::Result;
-use clap::{Parser, Subcommand};
-use ousia_atscale::{annotate, mapper::Mapper, report::CoverageReport, AtscaleError, AtscaleModel};
+use clap::{Parser, Subcommand, ValueEnum};
+use ousia_atscale::{annotate, mapper::Mapper, rdf, report::CoverageReport, AtscaleError, AtscaleModel};
 use std::path::PathBuf;
 
 fn main() {
@@ -27,6 +28,9 @@ fn run() -> Result<()> {
         Commands::Ground { model, from_mcp } => cmd_ground(model, from_mcp),
         Commands::Annotate { model, out, from_mcp } => cmd_annotate(model, out, from_mcp),
         Commands::Report { model, from_mcp } => cmd_report(model, from_mcp),
+        Commands::Export { model, from_mcp, format, out } => {
+            cmd_export(model, from_mcp, format, out)
+        }
     }
 }
 
@@ -39,6 +43,15 @@ fn run() -> Result<()> {
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+}
+
+/// RDF output format for the `export` subcommand.
+#[derive(Clone, Debug, ValueEnum)]
+enum RdfFormat {
+    /// Turtle (.ttl) — compact, human-readable RDF.
+    Turtle,
+    /// OWL/XML (.owl) — XML serialization with owl:imports.
+    Owl,
 }
 
 #[derive(Subcommand)]
@@ -72,6 +85,25 @@ enum Commands {
         /// Pull model live from the attached AtScale MCP connector.
         #[arg(long)]
         from_mcp: Option<String>,
+    },
+    /// Emit the grounded model as RDF (Turtle or OWL/XML).
+    ///
+    /// Each model element becomes an OWL named individual typed to its BFO class,
+    /// annotated with philosophicalGrounding, domainModule, and aristotelianDefinition.
+    /// The output includes owl:imports of BFO so a downstream reasoner can classify it.
+    Export {
+        /// Path to an AtScale model JSON file.
+        #[arg(long)]
+        model: Option<PathBuf>,
+        /// Pull model live from the attached AtScale MCP connector.
+        #[arg(long)]
+        from_mcp: Option<String>,
+        /// RDF serialization format.
+        #[arg(long, value_enum, default_value = "turtle")]
+        format: RdfFormat,
+        /// Output file path. Writes to stdout if omitted.
+        #[arg(long)]
+        out: Option<PathBuf>,
     },
 }
 
@@ -148,5 +180,56 @@ fn cmd_report(model_path: Option<PathBuf>, from_mcp: Option<String>) -> Result<(
     let report = CoverageReport::build(&grounded);
     let model_label = format!("{}.{}.{}", model.catalog, model.schema, model.table);
     report.print(&model_label);
+    Ok(())
+}
+
+fn cmd_export(
+    model_path: Option<PathBuf>,
+    from_mcp: Option<String>,
+    format: RdfFormat,
+    out: Option<PathBuf>,
+) -> Result<()> {
+    use std::io::Write;
+
+    let model = load_model(model_path, from_mcp)?;
+    let mapper = Mapper::new();
+    let grounded = mapper.ground_model(&model);
+
+    match format {
+        RdfFormat::Turtle => {
+            let bytes = rdf::emit_turtle(&model.catalog, &model.schema, &model.table, &grounded)?;
+            match out {
+                Some(ref path) => {
+                    std::fs::write(path, &bytes)?;
+                    eprintln!(
+                        "Turtle written to: {} ({} bytes, {} individuals)",
+                        path.display(),
+                        bytes.len(),
+                        grounded.len()
+                    );
+                }
+                None => {
+                    std::io::stdout().write_all(&bytes)?;
+                }
+            }
+        }
+        RdfFormat::Owl => {
+            let xml = rdf::emit_owlxml(&model.catalog, &model.schema, &model.table, &grounded)?;
+            match out {
+                Some(ref path) => {
+                    std::fs::write(path, xml.as_bytes())?;
+                    eprintln!(
+                        "OWL/XML written to: {} ({} bytes, {} individuals)",
+                        path.display(),
+                        xml.len(),
+                        grounded.len()
+                    );
+                }
+                None => {
+                    print!("{xml}");
+                }
+            }
+        }
+    }
     Ok(())
 }

@@ -8,13 +8,15 @@
 //! - [`model`]   — AtScale model JSON types (describe_model output shape)
 //! - [`mapper`]  — BFO category assignment rules
 //! - [`annotate`] — Grounded overlay emitter
-//! - [`report`]  — Coverage statistics
-//! - [`error`]   — Error types
+//! - [`rdf`]      — RDF/Turtle/OWL-XML exporter
+//! - [`report`]   — Coverage statistics
+//! - [`error`]    — Error types
 
 pub mod annotate;
 pub mod error;
 pub mod mapper;
 pub mod model;
+pub mod rdf;
 pub mod report;
 
 pub use error::AtscaleError;
