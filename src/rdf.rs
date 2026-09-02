@@ -297,7 +297,7 @@ mod tests {
     fn grounded() -> (AtscaleModel, Vec<GroundedElement>) {
         let model = sales_model();
         let mapper = Mapper::new();
-        let g = mapper.ground_model(&model);
+        let g = mapper.ground_model(&model).expect("grounding failed");
         (model, g)
     }
 
